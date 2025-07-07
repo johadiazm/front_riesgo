@@ -1,10 +1,13 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from views import generar_informe_en_word, generar_graficos_y_pdf
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from views import generar_graficos_y_pdf
 app = FastAPI()
+from fastapi import Query
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,6 +21,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(REPORTS_DIR, exist_ok=True)
 class InformeRequest(BaseModel):
     filename: str
+    formato: str = "pdf" 
 @app.post("/upload/")
 async def upload_file(file: UploadFile = File(...)):
     # Validar extensión del archivo
@@ -33,20 +37,39 @@ async def upload_file(file: UploadFile = File(...)):
 @app.post("/generar_informe/")
 def generar_informe(data: InformeRequest):
     filename = data.filename
+    formato = data.formato
     file_path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
-    pdf_name = generar_graficos_y_pdf(file_path, filename, REPORTS_DIR)
-    return {"pdf": pdf_name}
+    if formato == "pdf":
+        informe_name = generar_graficos_y_pdf(file_path, filename, REPORTS_DIR)
+    elif formato == "word":
+        informe_name = generar_informe_en_word(file_path, None, filename, REPORTS_DIR)
+    else:
+        raise HTTPException(status_code=400, detail="Formato no soportado")
+    return {"informe": informe_name}
 
-@app.get("/descargar_informe/{pdf_name}")
-def descargar_informe(pdf_name: str):
-    pdf_path = os.path.join(REPORTS_DIR, pdf_name)
-    if not os.path.exists(pdf_path):
+
+@app.get("/descargar_informe/{nombre}")
+def descargar_informe(nombre: str, formato: str = Query("pdf")):
+    base, _ = os.path.splitext(nombre)
+    if formato == "pdf":
+        ext = ".pdf"
+        media_type = "application/pdf"
+    elif formato == "word":
+        ext = ".docx"
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    else:
+        raise HTTPException(status_code=400, detail="Formato no soportado")
+
+    informe_name = base + ext
+    informe_path = os.path.join(REPORTS_DIR, informe_name)
+    if not os.path.exists(informe_path):
         raise HTTPException(status_code=404, detail="Informe no encontrado")
+
     return FileResponse(
-        pdf_path,
-        media_type='application/pdf',
-        filename=pdf_name,
-        headers={"Content-Disposition": f'inline; filename="{pdf_name}"'})
-      
+        informe_path,
+        media_type=media_type,
+        filename=informe_name,
+        headers={"Content-Disposition": f'inline; filename="{informe_name}"'}
+    )

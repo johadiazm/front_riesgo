@@ -4,36 +4,29 @@ import '../styles/FileUpload.css';
 const FileUpload = () => {
   const [fileName, setFileName] = useState("");
   const [pdfName, setPdfName] = useState("");
+  const [wordName, setWordName] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file) {
-      setFileName(file.name);
-      
-    } else {
-      setFileName("");
-    }
+    setFileName(file ? file.name : "");
   };
 
   const handleFileUpload = async (event) => {
     event.preventDefault();
     const fileInput = document.getElementById("file-upload");
     const file = fileInput.files[0];
-
     if (!file) {
       alert("Por favor, selecciona un archivo.");
       return;
     }
-
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const response = await fetch("http://localhost:8000/upload/", {
         method: "POST",
         body: formData,
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         alert(`Error: ${errorData.detail}`);
@@ -42,39 +35,52 @@ const FileUpload = () => {
         alert(data.message);
       }
     } catch (error) {
-      console.error("Error al cargar el archivo:", error);
       alert("Ocurrió un error al cargar el archivo.");
     }
   };
-  const [loading, setLoading] = useState(false);
-  const handleGenerarInforme = async () => {
+
+  // Genera ambos informes (PDF y Word) al mismo tiempo
+  const handleGenerarAmbosInformes = async () => {
     setLoading(true);
     if (!fileName) {
       alert("Primero debes subir un archivo.");
+      setLoading(false);
       return;
     }
     try {
-      const response = await fetch("http://localhost:8000/generar_informe/", {
+      // Generar PDF
+      const responsePDF = await fetch("http://localhost:8000/generar_informe/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: fileName }),
+        body: JSON.stringify({ filename: fileName, formato: "pdf" }),
       });
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(`Error: ${errorData.detail}`);
+      // Generar Word
+      const responseWord = await fetch("http://localhost:8000/generar_informe/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: fileName, formato: "word" }),
+      });
+
+      if (!responsePDF.ok || !responseWord.ok) {
+        alert("Error al generar uno de los informes.");
       } else {
-        const data = await response.json();
-        setPdfName(data.pdf);
-        alert("Informe generado. Ahora puedes descargarlo.");
+        const dataPDF = await responsePDF.json();
+        const dataWord = await responseWord.json();
+        setPdfName(dataPDF.informe);
+        setWordName(dataWord.informe);
+        alert("Informes generados. Ahora puedes descargarlos.");
       }
     } catch (error) {
-      alert("Ocurrió un error al generar el informe.");
+      alert("Ocurrió un error al generar los informes.");
     }
     setLoading(false);
   };
-const handleDescargarInforme = () => {
-    if (pdfName) {
-      window.open(`http://localhost:8000/descargar_informe/${pdfName}`, "_blank");
+
+  // Descarga el informe seleccionado
+  const handleDescargarInforme = (formato) => {
+    let informe = formato === "pdf" ? pdfName : wordName;
+    if (informe) {
+      window.open(`http://localhost:8000/descargar_informe/${informe}?formato=${formato}`, "_blank");
     }
   };
 
@@ -90,31 +96,39 @@ const handleDescargarInforme = () => {
         />
         <button type="submit">Subir archivo</button>
       </form>
+
       {fileName && <p>Archivo seleccionado: {fileName}</p>}
-      <button onClick={handleGenerarInforme}>Generar Informe</button>
-      
-       {loading && (
+
+      {/* Un solo botón para generar ambos informes */}
+      <button onClick={handleGenerarAmbosInformes}>Generar Informe</button>
+
+      {loading && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 30 }}>
           <img src="/ventana.gif" alt="Cargando..." style={{ width: 80, height: 80 }} />
           <p>Generando informe, por favor espere...</p>
         </div>
       )}
-      {pdfName && (
-  <>
-    <button onClick={handleDescargarInforme}>
-      Descargar Informe PDF
-    </button>
-    <iframe
-      src={`http://localhost:8000/descargar_informe/${pdfName}`}
-      width="100%"
-      height="600px"
-      title="Vista previa del informe"
-      style={{ border: "1px solid #ccc", marginTop: "20px" }}
-    />
-    
-  </>
-)}
-</div>
+
+      {/* Botones para descargar PDF o Word solo si ambos existen */}
+      {pdfName && wordName && (
+        <>
+          <button onClick={() => handleDescargarInforme('pdf')}>
+            Descargar Informe PDF
+          </button>
+          <button onClick={() => handleDescargarInforme('word')}>
+            Descargar Informe Word
+          </button>
+          {/* Vista previa solo del PDF */}
+          <iframe
+            src={`http://localhost:8000/descargar_informe/${pdfName}`}
+            width="100%"
+            height="600px"
+            title="Vista previa del informe"
+            style={{ border: "1px solid #ccc", marginTop: "20px" }}
+          />
+        </>
+      )}
+    </div>
   );
 };
 

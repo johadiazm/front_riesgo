@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from analytics.views import generar_informe_en_word, generar_graficos_y_pdf
+from views import generar_informe_en_word, generar_graficos_y_pdf
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 app = FastAPI()

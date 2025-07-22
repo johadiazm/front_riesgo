@@ -6,6 +6,7 @@ const FileUpload = () => {
   const [pdfName, setPdfName] = useState("");
   const [wordName, setWordName] = useState("");
   const [loading, setLoading] = useState(false);
+  const baseURL = "https://proyecto-riesgo-psicosocial.onrender.com";
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -22,7 +23,7 @@ const FileUpload = () => {
     }
     const formData = new FormData();
     formData.append("file", file);
-    const baseURL = "https://proyecto-riesgo-psicosocial.onrender.com";
+
 
     try {
       const response = await fetch(`${baseURL}/upload/`, {
@@ -51,13 +52,13 @@ const FileUpload = () => {
     }
     try {
       // Generar PDF
-      const responsePDF = await fetch("http://localhost:8000/generar_informe/", {
+      const responsePDF = await fetch(`${baseURL}/generar_informe/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: fileName, formato: "pdf" }),
       });
       // Generar Word
-      const responseWord = await fetch("http://localhost:8000/generar_informe/", {
+      const responseWord = await fetch(`${baseURL}/generar_informe/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: fileName, formato: "word" }),
@@ -82,7 +83,7 @@ const FileUpload = () => {
   const handleDescargarInforme = (formato) => {
     let informe = formato === "pdf" ? pdfName : wordName;
     if (informe) {
-      window.open(`http://localhost:8000/descargar_informe/${informe}?formato=${formato}`, "_blank");
+      window.open(`${baseURL}/descargar_informe/${informe}?formato=${formato}`, "_blank");
     }
   };
 
@@ -122,7 +123,7 @@ const FileUpload = () => {
           </button>
           {/* Vista previa solo del PDF */}
           <iframe
-            src={`http://localhost:8000/descargar_informe/${pdfName}`}
+            src={`${baseURL}/descargar_informe/${pdfName}`}
             width="100%"
             height="600px"
             title="Vista previa del informe"

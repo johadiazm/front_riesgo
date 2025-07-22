@@ -22,8 +22,10 @@ const FileUpload = () => {
     }
     const formData = new FormData();
     formData.append("file", file);
+    const baseURL = "https://proyecto-riesgo-psicosocial.onrender.com";
+
     try {
-      const response = await fetch("http://localhost:8000/upload/", {
+      const response = await fetch(`${baseURL}/upload/`, {
         method: "POST",
         body: formData,
       });
